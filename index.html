@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>ShallWe!? — Next Event</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+  <script type="module" src="firebase.js"></script>
+</head>
+<body>
+  <header class="header">
+    <div class="container header-inner">
+      <a class="logo" href="index.html" aria-label="Home">
+        <svg viewBox="0 0 24 24"><path d="M8 19l2-6 2 2v5h2v-6l2-2 3 2v-3l-3-2-4 1-2-3-2 1 1 3-3 8h2z"/></svg>
+      </a>
+
+      <div class="appname" style="text-align:center;flex:1;">ShallWe!?</div>
+      <button id="menuBtn" class="menu-btn" aria-label="Menu" aria-haspopup="true" aria-expanded="false">
+        <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M5 7h14v2H5zm0 4h14v2H5zm0 4h14v2H5z"/></svg>
+      </button>
+      <nav id="menu" class="menu" role="menu">
+        <a href="past.html" role="menuitem">Past events</a>
+        <a href="suggest.html" role="menuitem">Suggest an event</a>
+        <a href="chat.html" role="menuitem">Chat</a>
+        <a href="admin.html" role="menuitem">Admin</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="container">
+    <section class="card" id="eventCard">
+      <div class="subtitle">Our Next Event</div>
+      <h1 id="evTitle" class="title">Loading…</h1>
+
+      <div class="meta">
+        <span id="evDate" class="badge">—</span>
+        <span id="evTime" class="badge time">—</span>
+      </div>
+
+      <div class="loc">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2C8.14 2 5 5.14 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.86-3.14-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5S10.62 6.5 12 6.5s2.5 1.12 2.5 2.5S13.38 11.5 12 11.5z"/></svg>
+        <span id="evLocation">—</span>
+      </div>
+
+      <details id="participantsPanel" open>
+        <summary>Participants</summary>
+        <div class="section-body" id="participantsList"></div>
+      </details>
+
+      <details id="descPanel" open>
+        <summary>Description</summary>
+        <div class="section-body" id="evDesc">—</div>
+      </details>
+
+      <details>
+        <summary>RSVP</summary>
+        <div class="section-body">
+          <div class="row" style="flex-wrap:wrap">
+            <input id="rsvpName" class="input" placeholder="Your name" style="flex:1;min-width:180px">
+            <button class="btn tiny green" id="btnGoing">I’m in ✓</button>
+            <button class="btn tiny gray" id="btnMaybe">Maybe •</button>
+            <button class="btn tiny red" id="btnNotGoing">Can’t ✕</button>
+          </div>
+          <p class="muted">Your RSVP updates the participant list (✓ going, • maybe, ✕ not going).</p>
+        </div>
+      </details>
+    </section>
+
+    <div class="footer">© 2025 ShallWe!?</div>
+  </main>
+
+  <a class="fab" href="chat.html" aria-label="Open chat">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 2H4a2 2 0 0 0-2 2v18l4-4h14a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2z"/></svg>
+  </a>
+
+  <script type="module">
+    import { getCurrentEvent, listenCurrentParticipants, archiveCurrentEventIfExpired, rsvpForCurrentEvent, ensureAnonAuth } from './firebase.js';
+
+    // Burger menu
+    window.addEventListener('DOMContentLoaded', () => {
+      const btn = document.getElementById('menuBtn');
+      const menu = document.getElementById('menu');
+      btn?.addEventListener('click', () => {
+        const open = menu.style.display === 'block';
+        menu.style.display = open ? 'none' : 'block';
+        btn.setAttribute('aria-expanded', String(!open));
+      });
+      document.addEventListener('click', (e)=>{
+        if (!menu.contains(e.target) && !btn.contains(e.target)) {
+          menu.style.display='none'; btn.setAttribute('aria-expanded','false');
+        }
+      });
+      // close when clicking a link
+      document.querySelectorAll('#menu a').forEach(a => a.addEventListener('click', ()=>{
+        menu.style.display='none'; btn.setAttribute('aria-expanded','false');
+      }));
+    });
+
+    (async function init() {
+      const titleEl = document.getElementById('evTitle');
+      const dateEl  = document.getElementById('evDate');
+      const timeEl  = document.getElementById('evTime');
+      const locEl   = document.getElementById('evLocation');
+      const descEl  = document.getElementById('evDesc');
+      const listEl  = document.getElementById('participantsList');
+
+      function formatUK(dateIso){
+        if(!dateIso) return '—';
+        const [y,m,d] = dateIso.split('-').map(Number);
+        return new Date(y,m-1,d).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'});
+      }
+
+      try { await ensureAnonAuth(); } catch { /* ignore */ }
+      try { await archiveCurrentEventIfExpired(); } catch { /* ignore */ }
+
+      try {
+        const ev = await getCurrentEvent();
+        if(!ev){
+          titleEl.textContent = "No event set";
+          dateEl.textContent = '—'; timeEl.textContent='—';
+          locEl.textContent = '—';  descEl.textContent='—';
+        } else {
+          titleEl.textContent = ev.title || "Untitled";
+          dateEl.textContent  = formatUK(ev.date);
+          timeEl.textContent  = ev.time || "—";
+          locEl.textContent   = ev.location || ev.place || "—";
+          descEl.textContent  = ev.description || "";
+
+          listenCurrentParticipants(participants => {
+            listEl.innerHTML = "";
+            if (participants.length === 0) { listEl.textContent = "No participants yet."; return; }
+            for(const p of participants){
+              const row = document.createElement('div');
+              row.className = 'participant';
+              const m = document.createElement('div');
+              const s = (p.status||'maybe').toLowerCase();
+              m.className = 'mark ' + (s==='going' ? 'going' : s==='not_going' ? 'not' : 'maybe');
+              m.textContent = s==='going' ? '✓' : s==='not_going' ? '✕' : '•';
+              const name = document.createElement('div');
+              name.textContent = p.name || 'Unnamed';
+              row.appendChild(m); row.appendChild(name);
+              listEl.appendChild(row);
+            }
+          });
+        }
+      } catch(err) {
+        console.error('Load event failed', err);
+      }
+
+      // RSVP
+      const rsvpName = document.getElementById('rsvpName');
+      const btnGoing = document.getElementById('btnGoing');
+      const btnMaybe = document.getElementById('btnMaybe');
+      const btnNot   = document.getElementById('btnNotGoing');
+      async function rsvp(status){
+        const name = (rsvpName.value || '').trim() || 'Anon';
+        try { await rsvpForCurrentEvent({ name, status }); rsvpName.placeholder = `Saved as ${name}`; }
+        catch(e) { alert('RSVP failed: ' + e.message); }
+      }
+      btnGoing?.addEventListener('click', ()=> rsvp('going'));
+      btnMaybe?.addEventListener('click', ()=> rsvp('maybe'));
+      btnNot?.addEventListener('click', ()=> rsvp('not_going'));
+    })();
+  </script>
+</body>
+</html>

@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ShallWe!? — Suggest an event</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+  <script type="module" src="firebase.js"></script>
+  <style>
+    form{display:grid;gap:12px}
+    input, textarea{padding:12px;border:1px solid var(--border);border-radius:12px}
+    button{padding:12px 16px;border:0;border-radius:12px;background:var(--accent);color:#fff;font-weight:700}
+    .item{border:1px solid var(--border);border-radius:12px;padding:10px;margin:8px 0}
+    .meta{font-size:12px;color:var(--muted)}
+  </style>
+</head>
+<body>
+  <header class="header">
+    <div class="container header-inner">
+      <a class="logo" href="index.html" aria-label="Home">
+        <svg viewBox="0 0 24 24"><path d="M8 19l2-6 2 2v5h2v-6l2-2 3 2v-3l-3-2-4 1-2-3-2 1 1 3-3 8h2z"/></svg>
+      </a>
+      <div class="appname" style="flex:1;text-align:center;">ShallWe!? — Suggest an event</div>
+      <a class="menu-btn" href="index.html" aria-label="Back">
+        <svg viewBox="0 0 24 24"><path d="M15.41 7.41 14 6 8 12l6 6 1.41-1.41L10.83 12z"/></svg>
+      </a>
+    </div>
+  </header>
+
+  <main class="container">
+    <section class="card">
+      <form id="form">
+        <input id="title" placeholder="Event title" required />
+        <input id="place" placeholder="Place (e.g., Newark)" required />
+        <input id="date" placeholder="Date" type="date" required />
+        <input id="time" placeholder="Event time" type="time" required />
+        <textarea id="desc" rows="4" placeholder="Brief description"></textarea>
+        <button type="submit">Submit suggestion</button>
+      </form>
+      <p id="msg" class="muted"></p>
+    </section>
+
+    <section class="card" id="sugs">
+      <h3 class="subtitle">Recent suggestions</h3>
+      <div id="sList"></div>
+    </section>
+  </main>
+
+  <script type="module">
+    import { submitSuggestion, listenSuggestions } from './firebase.js';
+
+    // --- Submit form
+    const form = document.getElementById('form');
+    const msg = document.getElementById('msg');
+    form.addEventListener('submit', async (e)=>{
+      e.preventDefault();
+      try {
+        const payload = {
+          title: form.title.value.trim(),
+          place: form.place.value.trim(),
+          date: form.date.value,
+          time: form.time.value,
+          description: form.desc.value.trim()
+        };
+        await submitSuggestion(payload);
+        msg.textContent = "Thanks! Suggestion submitted.";
+        form.reset();
+      } catch(err) {
+        msg.textContent = "Submit failed: " + err.message;
+      }
+    });
+
+    // --- Render recent suggestions
+    const sList = document.getElementById('sList');
+    function fmt(dt){
+      try{
+        const d = dt?.toDate ? dt.toDate() : (dt instanceof Date ? dt : new Date(dt));
+        return new Intl.DateTimeFormat('en-GB',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}).format(d);
+      }catch{ return '' }
+    }
+
+    listenSuggestions(items => {
+      sList.innerHTML = '';
+      if (!items.length) {
+        sList.innerHTML = '<p class="muted">No suggestions yet.</p>';
+        return;
+      }
+      items.forEach(s => {
+        const el = document.createElement('div');
+        el.className = 'item';
+        el.innerHTML = `
+          <h4>${(s.title||'Untitled')}</h4>
+          <div class="meta">${(s.place||'')} • ${(s.date||'')} ${(s.time||'')}</div>
+          <p style="margin:.5rem 0;">${(s.description||'')}</p>
+          <div class="meta">Submitted: ${fmt(s.createdAt)}</div>
+        `;
+        sList.appendChild(el);
+      });
+    });
+  </script>
+</body>
+</html>
