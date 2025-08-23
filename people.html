@@ -6,7 +6,7 @@
   <title>ShallWe!? — People</title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css">
-  <script type="module" src="firebase.js"></script>
+  <script type="module" src="firebase.js?v=7"></script>
 </head>
 <body>
 <header class="header">
@@ -14,7 +14,7 @@
     <a class="logo" href="index.html" aria-label="Home">
       <svg viewBox="0 0 24 24"><path d="M8 19l2-6 2 2v5h2v-6l2-2 3 2v-3l-3-2-4 1-2-3-2 1 1 3-3 8h2z"/></svg>
     </a>
-    <div class="appname" style="flex:1;text-align:center;">ShallWe!? — People</div>
+    <div class="appname center">ShallWe!? — People</div>
     <a class="menu-btn" href="admin.html" aria-label="Back">
       <svg viewBox="0 0 24 24"><path d="M15.41 7.41 14 6 8 12l6 6 1.41-1.41L10.83 12z"/></svg>
     </a>
@@ -23,13 +23,13 @@
 
 <main class="container">
   <section class="card">
-    <div class="row" style="gap:12px; margin-bottom:10px;">
-      <input id="newName" class="input" placeholder="Add person (e.g., Lorenzo)">
+    <div class="row gap-12 mb-10">
+      <input id="newName" class="input flex-1" placeholder="Add person (e.g., Lorenzo)">
       <button id="addBtn" class="btn tiny">Add</button>
       <a class="btn tiny gray" href="admin.html">Go to Admin</a>
     </div>
 
-    <table id="ptable" style="width:100%;border-collapse:collapse">
+    <table id="ptable">
       <thead><tr><th>Name</th><th style="width:1%"></th></tr></thead>
       <tbody></tbody>
     </table>
@@ -38,52 +38,43 @@
 </main>
 
 <script type="module">
-  import { listPeople, addPerson, deletePerson, renamePerson } from './firebase.js';
+  import { listPeople, addPerson, deletePerson, renamePerson } from './firebase.js?v=7';
 
-  (function(){
-    const tbody = document.querySelector('#ptable tbody');
-    const msg = document.getElementById('msg');
-    const addBtn = document.getElementById('addBtn');
-    const newName = document.getElementById('newName');
+  const tbody = document.querySelector('#ptable tbody');
+  const msg = document.getElementById('msg');
 
-    async function refresh(){
-      tbody.innerHTML = '';
-      const people = await listPeople();
-      if (people.length === 0) { msg.textContent = 'No people yet.'; return; }
-      msg.textContent = '';
-      people.forEach(p => {
-        const tr = document.createElement('tr');
-        tr.innerHTML = `
-          <td><input class="input" value="${p.name || ''}" data-id="${p.id}"></td>
-          <td><button class="btn tiny red" type="button">Delete</button></td>
-        `;
-        tr.querySelector('input').addEventListener('change', async (e) => {
-          await renamePerson(p.id, e.target.value.trim());
-        });
-        tr.querySelector('button').addEventListener('click', async () => {
-          await deletePerson(p.id);
-          refresh();
-        });
-        tbody.appendChild(tr);
+  async function refresh(){
+    tbody.innerHTML = '';
+    const people = await listPeople();
+    if(people.length===0){ msg.textContent='No people yet.'; return; }
+    msg.textContent = '';
+    people.forEach(p=>{
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td><input class="input" value="${p.name||''}" data-id="${p.id}"></td>
+        <td><button class="btn tiny red">Delete</button></td>
+      `;
+      tr.querySelector('input').addEventListener('change', async (e)=>{
+        await renamePerson(p.id, e.target.value.trim());
       });
-    }
-
-    // Add person
-    async function addPersonFlow(){
-      const name = newName.value.trim();
-      if (!name) return;
-      await addPerson(name);
-      newName.value = '';
-      refresh();
-    }
-    addBtn.addEventListener('click', addPersonFlow);
-    newName.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') { e.preventDefault(); addPersonFlow(); }
+      tr.querySelector('button').addEventListener('click', async ()=>{
+        await deletePerson(p.id);
+        refresh();
+      });
+      tbody.appendChild(tr);
     });
+  }
 
-    // Initial load
+  document.getElementById('addBtn').addEventListener('click', async ()=>{
+    const input = document.getElementById('newName');
+    const name = input.value.trim();
+    if(!name) return;
+    await addPerson(name);
+    input.value='';
     refresh();
-  })();
+  });
+
+  refresh();
 </script>
 </body>
 </html>

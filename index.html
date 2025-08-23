@@ -2,11 +2,11 @@
 <html lang="en-GB">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>ShallWe!? — Next Event</title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css">
-  <script type="module" src="firebase.js"></script>
+  <script type="module" src="firebase.js?v=7"></script>
 </head>
 <body>
   <header class="header">
@@ -14,8 +14,7 @@
       <a class="logo" href="index.html" aria-label="Home">
         <svg viewBox="0 0 24 24"><path d="M8 19l2-6 2 2v5h2v-6l2-2 3 2v-3l-3-2-4 1-2-3-2 1 1 3-3 8h2z"/></svg>
       </a>
-
-      <div class="appname" style="text-align:center;flex:1;">ShallWe!?</div>
+      <div class="appname center">ShallWe!?</div>
       <button id="menuBtn" class="menu-btn" aria-label="Menu" aria-haspopup="true" aria-expanded="false">
         <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M5 7h14v2H5zm0 4h14v2H5zm0 4h14v2H5z"/></svg>
       </button>
@@ -56,8 +55,8 @@
       <details>
         <summary>RSVP</summary>
         <div class="section-body">
-          <div class="row" style="flex-wrap:wrap">
-            <input id="rsvpName" class="input" placeholder="Your name" style="flex:1;min-width:180px">
+          <div class="row wrap">
+            <input id="rsvpName" class="input flex-1 minw-180" placeholder="Your name">
             <button class="btn tiny green" id="btnGoing">I’m in ✓</button>
             <button class="btn tiny gray" id="btnMaybe">Maybe •</button>
             <button class="btn tiny red" id="btnNotGoing">Can’t ✕</button>
@@ -75,7 +74,7 @@
   </a>
 
   <script type="module">
-    import { getCurrentEvent, listenCurrentParticipants, archiveCurrentEventIfExpired, rsvpForCurrentEvent, ensureAnonAuth } from './firebase.js';
+    import { getCurrentEvent, listenCurrentParticipants, archiveCurrentEventIfExpired, rsvpForCurrentEvent, ensureAnonAuth } from './firebase.js?v=7';
 
     // Burger menu
     window.addEventListener('DOMContentLoaded', () => {
@@ -91,7 +90,6 @@
           menu.style.display='none'; btn.setAttribute('aria-expanded','false');
         }
       });
-      // close when clicking a link
       document.querySelectorAll('#menu a').forEach(a => a.addEventListener('click', ()=>{
         menu.style.display='none'; btn.setAttribute('aria-expanded','false');
       }));
@@ -111,8 +109,8 @@
         return new Date(y,m-1,d).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'});
       }
 
-      try { await ensureAnonAuth(); } catch { /* ignore */ }
-      try { await archiveCurrentEventIfExpired(); } catch { /* ignore */ }
+      try { await ensureAnonAuth(); } catch {}
+      try { await archiveCurrentEventIfExpired(); } catch {}
 
       try {
         const ev = await getCurrentEvent();
@@ -129,19 +127,33 @@
 
           listenCurrentParticipants(participants => {
             listEl.innerHTML = "";
-            if (participants.length === 0) { listEl.textContent = "No participants yet."; return; }
-            for(const p of participants){
-              const row = document.createElement('div');
-              row.className = 'participant';
-              const m = document.createElement('div');
-              const s = (p.status||'maybe').toLowerCase();
-              m.className = 'mark ' + (s==='going' ? 'going' : s==='not_going' ? 'not' : 'maybe');
-              m.textContent = s==='going' ? '✓' : s==='not_going' ? '✕' : '•';
-              const name = document.createElement('div');
-              name.textContent = p.name || 'Unnamed';
-              row.appendChild(m); row.appendChild(name);
-              listEl.appendChild(row);
+            if (participants.length === 0) {
+              listEl.textContent = "No participants yet.";
+              return;
             }
+            const going = participants.filter(p => (p.status||'maybe').toLowerCase() === 'going');
+            const maybe = participants.filter(p => (p.status||'maybe').toLowerCase() === 'maybe');
+            const notgo = participants.filter(p => (p.status||'maybe').toLowerCase() === 'not_going');
+
+            const legend = document.createElement('div');
+            legend.className = 'legend';
+            legend.innerHTML = `
+              <div class="item"><span class="sw going"></span> Going (${going.length})</div>
+              <div class="item"><span class="sw maybe"></span> Maybe (${maybe.length})</div>
+              <div class="item"><span class="sw not"></span> Not going (${notgo.length})</div>
+            `;
+            listEl.appendChild(legend);
+
+            const wrap = document.createElement('div');
+            wrap.className = 'pillwrap';
+            participants.forEach(p => {
+              const s = (p.status||'maybe').toLowerCase();
+              const pill = document.createElement('div');
+              pill.className = 'pill ' + (s==='going' ? 'going' : s==='not_going' ? 'not' : 'maybe');
+              pill.innerHTML = `<span class="dot"></span><span>${p.name || 'Unnamed'}</span>`;
+              wrap.appendChild(pill);
+            });
+            listEl.appendChild(wrap);
           });
         }
       } catch(err) {

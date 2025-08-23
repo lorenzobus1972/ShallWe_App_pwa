@@ -10,6 +10,7 @@ import {
   setPersistence, browserLocalPersistence
 } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-auth.js";
 
+// Your Firebase config (public; safe for web)
 const firebaseConfig = {
   apiKey: "AIzaSyDoYwk7CsJp4O5lfuEgBsHGeioJuZxysr4",
   authDomain: "shallwe-project.firebaseapp.com",
@@ -24,39 +25,20 @@ export const app  = initializeApp(firebaseConfig);
 export const db   = getFirestore(app);
 export const auth = getAuth(app);
 
-// Persist login (no top-level await)
+// Persist login
 setPersistence(auth, browserLocalPersistence).catch(() => {});
 
 export const ADMIN_UID = "mxFS592ds8cgeEspA0VxJkTu4Nl2";
 
-// ---- Auth helper ----
+// --- Auth helpers ---
 export async function ensureAnonAuth() {
   if (auth.currentUser) return auth.currentUser;
   try { await signInAnonymously(auth); }
-  catch {
-    throw new Error("Enable Anonymous sign-in: Firebase Console → Authentication → Sign-in method.");
-  }
+  catch { throw new Error("Enable Anonymous sign-in: Firebase Console → Authentication → Sign-in method."); }
   return new Promise(res => onAuthStateChanged(auth, u => u && res(u)));
 }
 
-// ---- CHAT (key fix: createdAtMillis + orderBy) ----
-export function listenMessages(cb) {
-  const ref = collection(db, "messages");
-  const qy  = query(ref, orderBy("createdAtMillis", "asc"));
-  return onSnapshot(qy, snap => cb(snap.docs.map(d => ({ id: d.id, ...d.data() }))));
-}
-export async function sendMessage({ text, userId, displayName }) {
-  await addDoc(collection(db, "messages"), {
-    text,
-    userId,
-    displayName: displayName || 'Anon',
-    createdAt: serverTimestamp(),     // server time
-    createdAtMillis: Date.now()       // client time for ordering (prevents vanishing)
-  });
-}
-
-// ---- (rest of your helpers unchanged) ----
-// Current event
+// --- Current event ---
 export async function getCurrentEvent() {
   const ref = doc(db, "events", "current");
   const snap = await getDoc(ref);
@@ -67,7 +49,24 @@ export function listenCurrentParticipants(cb) {
   const qy  = query(ref, orderBy("name"));
   return onSnapshot(qy, snap => cb(snap.docs.map(d => ({ id: d.id, ...d.data() }))));
 }
-// Suggestions
+
+// --- Chat (createdAtMillis ordering prevents vanishing) ---
+export function listenMessages(cb) {
+  const ref = collection(db, "messages");
+  const qy  = query(ref, orderBy("createdAtMillis", "asc"));
+  return onSnapshot(qy, snap => cb(snap.docs.map(d => ({ id: d.id, ...d.data() }))));
+}
+export async function sendMessage({ text, userId, displayName }) {
+  await addDoc(collection(db, "messages"), {
+    text,
+    userId,
+    displayName: displayName || 'Anon',
+    createdAt: serverTimestamp(),
+    createdAtMillis: Date.now()
+  });
+}
+
+// --- Suggestions ---
 export function listenSuggestions(cb) {
   const qy = query(collection(db, "suggestions"), orderBy("createdAt", "desc"));
   return onSnapshot(qy, snap => cb(snap.docs.map(d => ({ id:d.id, ...d.data() }))));
@@ -75,12 +74,17 @@ export function listenSuggestions(cb) {
 export async function submitSuggestion(payload) {
   await addDoc(collection(db, "suggestions"), { ...payload, createdAt: serverTimestamp() });
 }
-// Past events
+export async function deleteSuggestion(id) {
+  await deleteDoc(doc(db, "suggestions", id));
+}
+
+// --- Past events ---
 export async function listPastEvents() {
   const snap = await getDocs(query(collection(db, "past_events"), orderBy("date","desc")));
   return snap.docs.map(d => ({ id: d.id, ...d.data() }));
 }
-// Archive helpers
+
+// --- Archive helpers ---
 function todayUkISO() {
   const now = new Date();
   const fmt = new Intl.DateTimeFormat('en-GB', { timeZone:'Europe/London', year:'numeric', month:'2-digit', day:'2-digit' });
@@ -88,15 +92,19 @@ function todayUkISO() {
   return `${yyyy}-${mm}-${dd}`;
 }
 function isPastDate(date) { return typeof date === 'string' && date < todayUkISO(); }
+
 async function archiveCurrentCore({ bypassDateCheck=false }={}) {
   const evRef = doc(db, "events", "current");
   const evSnap = await getDoc(evRef);
   if (!evSnap.exists()) return { status: "no-current" };
+
   const ev = evSnap.data();
   if (!bypassDateCheck && !isPastDate(ev.date)) return { status: "not-past" };
   if (ev._archived) return { status: "already-archived" };
+
   const partsSnap = await getDocs(collection(db, "events", "current", "participants"));
   const participants = partsSnap.docs.map(d => ({ id:d.id, ...d.data() }));
+
   const pastRef = await addDoc(collection(db, "past_events"), {
     title: ev.title || "Untitled",
     place: ev.place || ev.location || "",
@@ -108,13 +116,15 @@ async function archiveCurrentCore({ bypassDateCheck=false }={}) {
     archivedFromCurrent: true,
     archivedAt: serverTimestamp()
   });
+
   for (const d of partsSnap.docs) await deleteDoc(d.ref);
   await deleteDoc(evRef);
   return { status:"archived", pastId: pastRef.id };
 }
 export async function archiveCurrentEventIfExpired() { return archiveCurrentCore(); }
 export async function archiveCurrentEventNow() { return archiveCurrentCore({ bypassDateCheck:true }); }
-// Admin
+
+// --- Admin ---
 export async function emailSignIn(email, password) { return (await signInWithEmailAndPassword(auth, email, password)).user; }
 export async function emailSignOut() { await signOut(auth); }
 export async function saveCurrentEvent(data) { await setDoc(doc(db,"events","current"), { ...data, _archived:false }, { merge:true }); }
@@ -128,7 +138,8 @@ export async function saveCurrentParticipants(list) {
   for (const d of snap.docs) await deleteDoc(d.ref);
   for (const p of list) await addDoc(col, { name:p.name, status:(p.status||'maybe').toLowerCase() });
 }
-// People
+
+// --- People ---
 export async function listPeople() {
   const snap = await getDocs(query(collection(db, "people"), orderBy("name")));
   return snap.docs.map(d => ({ id:d.id, ...d.data() }));
@@ -145,7 +156,8 @@ export async function upsertPeople(names) {
     await addDoc(collection(db,'people'), { name });
   }
 }
-// RSVP
+
+// --- RSVP ---
 export async function rsvpForCurrentEvent({ name, status }) {
   if (!auth.currentUser) await signInAnonymously(auth);
   const uid = auth.currentUser.uid;

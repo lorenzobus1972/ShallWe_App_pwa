@@ -1,88 +1,97 @@
 <!doctype html>
 <html lang="en-GB">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>ShallWe!? — Past events</title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css">
-  <script type="module" src="firebase.js"></script>
+  <script type="module" src="firebase.js?v=7"></script>
 </head>
 <body>
   <header class="header">
     <div class="container header-inner">
-<a class="logo" href="index.html" aria-label="Home">
-  <svg viewBox="0 0 24 24"><path d="M8 19l2-6 2 2v5h2v-6l2-2 3 2v-3l-3-2-4 1-2-3-2 1 1 3-3 8h2z"/></svg>
-</a>
-      <div class="appname" style="flex:1;text-align:center;">ShallWe!? — Past events</div>
+      <a class="logo" href="index.html" aria-label="Home"><svg viewBox="0 0 24 24"><path d="M8 19l2-6 2 2v5h2v-6l2-2 3 2v-3l-3-2-4 1-2-3-2 1 1 3-3 8h2z"/></svg></a>
+      <div class="appname center">ShallWe!? — Past events</div>
       <a class="menu-btn" href="index.html" aria-label="Back">
-        <svg viewBox="0 0 24 24"><path d="M15.41 7.41 14 6 8 12l6 6 1.41-1.41L10.83 12z"/></svg>
+        <svg viewBox="0 0 24 24"><path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"/></svg>
       </a>
     </div>
   </header>
 
-  <main class="container" id="list"></main>
+  <main class="container">
+    <section class="card" id="list">
+      <h2 class="subtitle">Archive</h2>
+      <div id="events"></div>
+    </section>
+  </main>
 
   <script type="module">
-    import { listPastEvents } from './firebase.js';
-    const list = document.getElementById('list');
+    import { listPastEvents } from './firebase.js?v=7';
 
-    function formatUK(d){
-      if(!d) return '';
-      const [y,m,dd]=d.split('-').map(Number);
-      return new Date(y,m-1,dd).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'});
+    const container = document.getElementById('events');
+
+    function formatUK(dateIso){
+      if(!dateIso) return '—';
+      const [y,m,d] = dateIso.split('-').map(Number);
+      return new Date(y,m-1,d).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'});
     }
 
-    function renderParticipants(ev){{
-      const arr = Array.isArray(ev.participants) ? ev.participants : [];
-      if(arr.length === 0) return '<div class="muted">No participant data saved.</div>';
-      const counts = { going:0, not_going:0, maybe:0 };
-      const rows = arr.map(p=>{{
-        const s = (p.status||'maybe').toLowerCase();
-        counts[s] = (counts[s] || 0) + 1;
-        const cls = s==='going' ? 'going' : s==='not_going' ? 'not' : 'maybe';
-        const mark = s==='going' ? '✓' : s==='not_going' ? '✕' : '•';
-        return `<div class="participant"><div class="mark ${cls}">${mark}</div><div>${(p.name||'Unnamed')}</div></div>`;
-      }}).join('');
-      const summary = `<div class="muted" style="margin-bottom:8px;">
-        ${counts.going} going • ${counts.maybe} maybe • ${counts.not_going} not going
-      </div>`;
-      return summary + rows;
-    }}
+    function chip(name, status){
+      const s = (status||'maybe').toLowerCase();
+      const div = document.createElement('div');
+      div.className = 'pill ' + (s==='going' ? 'going' : s==='not_going' ? 'not' : 'maybe');
+      div.innerHTML = `<span class="dot"></span><span>${name||'Unnamed'}</span>`;
+      return div;
+    }
 
-    (async function init(){{
+    (async function load(){
       const items = await listPastEvents();
-      if(items.length===0){{ list.innerHTML = '<div class="card">No past events yet.</div>'; return;}}
-      items.forEach(ev=>{{
-        const card = document.createElement('section');
-        card.className='card';
-        card.innerHTML = `
-          <div class="subtitle">${ev.place || ''}</div>
-          <h2 class="title">${ev.title || 'Untitled'}</h2>
-          <div class="meta">
-            <span class="badge">${ev.date ? formatUK(ev.date) : ''}</span>
-            <span class="badge time">${ev.time || ''}</span>
-          </div>
-          <div class="loc">
-            <svg viewBox="0 0 24 24"><path d="M12 2C8.14 2 5 5.14 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.86-3.14-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5S10.62 6.5 12 6.5s2.5 1.12 2.5 2.5S13.38 11.5 12 11.5z"/></svg>
-            <span>${ev.location || ev.place || ''}</span>
-          </div>
+      container.innerHTML = '';
+      if(items.length===0){
+        container.innerHTML = '<p class="muted">No past events archived yet.</p>';
+        return;
+      }
+      items.forEach(ev=>{
+        const card = document.createElement('div');
+        card.className = 'item';
 
-          <details open>
-            <summary>Description</summary>
-            <div class="section-body">${ev.description || ''}</div>
-          </details>
+        const title = document.createElement('h3');
+        title.textContent = ev.title || 'Untitled';
+        card.appendChild(title);
 
-          <details>
-            <summary>Participants</summary>
-            <div class="section-body">
-              ${renderParticipants(ev)}
-            </div>
-          </details>
+        const meta = document.createElement('div');
+        meta.className = 'meta';
+        meta.textContent = `${formatUK(ev.date)} • ${ev.time || '—'} • ${ev.location || ev.place || '—'}`;
+        card.appendChild(meta);
+
+        if (ev.description){
+          const p = document.createElement('p');
+          p.textContent = ev.description;
+          card.appendChild(p);
+        }
+
+        const legend = document.createElement('div');
+        legend.className = 'legend';
+        const parts = Array.isArray(ev.participants) ? ev.participants : [];
+        const going = parts.filter(p => (p.status||'maybe').toLowerCase() === 'going').length;
+        const maybe = parts.filter(p => (p.status||'maybe').toLowerCase() === 'maybe').length;
+        const notgo = parts.filter(p => (p.status||'maybe').toLowerCase() === 'not_going').length;
+        legend.innerHTML = `
+          <div class="item"><span class="sw going"></span> Going (${going})</div>
+          <div class="item"><span class="sw maybe"></span> Maybe (${maybe})</div>
+          <div class="item"><span class="sw not"></span> Not going (${notgo})</div>
         `;
-        list.appendChild(card);
-      }});
-    }})();
+        card.appendChild(legend);
+
+        const wrap = document.createElement('div');
+        wrap.className = 'pillwrap';
+        parts.forEach(p => wrap.appendChild(chip(p.name, p.status)));
+        card.appendChild(wrap);
+
+        container.appendChild(card);
+      });
+    })();
   </script>
 </body>
 </html>
