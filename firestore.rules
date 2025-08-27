@@ -1,0 +1,50 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isAdmin() {
+      return request.auth != null && request.auth.uid == "mxFS592ds8cgeEspA0VxJkTu4Nl2";
+    }
+
+    // Users
+    match /users/{uid} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null && request.auth.uid == uid;
+      allow update, delete: if request.auth != null && request.auth.uid == uid;
+    }
+
+    // Chat messages (in chats/global/messages)
+    match /chats/{chatId}/messages/{msgId} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.text is string
+        && request.resource.data.text.size() > 0
+        && request.resource.data.text.size() <= 2000;
+      allow update: if request.auth != null && (
+        request.auth.uid == resource.data.userId ||
+        // allow reaction count increments by anyone signed-in
+        (request.resource.data.reactions.keys().hasOnly(['👍','❤️','😂']))
+      );
+      allow delete: if isAdmin() || (request.auth != null && request.auth.uid == resource.data.userId);
+    }
+
+    // Events collection
+    match /events/{id} {
+      allow read: if true;
+      allow create, update, delete: if isAdmin();
+    }
+
+    // Suggestions
+    match /suggestions/{sid} {
+      allow read: if request.auth != null;
+      allow create: if true;
+      allow update, delete: if isAdmin();
+    }
+
+    // Fallback
+    match /{document=**} {
+      allow read: if true;
+    }
+  }
+}

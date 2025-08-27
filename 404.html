@@ -1,18 +1,40 @@
 <!doctype html>
 <html lang="en-GB">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Page Not Found — ShallWe!?</title>
-  <link rel="stylesheet" href="styles.css">
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#2a7e4e" />
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="icon" href="assets/icons/icon-192.png" sizes="192x192">
+  <link rel="apple-touch-icon" href="assets/icons/icon-192.png">
+  <link rel="stylesheet" href="styles.css" />
+  <title>Not found — ShallWe!?</title>
 </head>
 <body>
-  <main class="container">
-    <section class="card">
-      <h1 class="title">404 — Not found</h1>
-      <p class="muted">The page you’re looking for doesn’t exist.</p>
-      <p><a class="btn" href="index.html">Go to Home</a></p>
-    </section>
+  <header class="header" role="banner">
+    <nav class="navbar" aria-label="Primary">
+      <a class="brand" href="index.html"><span class="brand__logo" aria-hidden="true"></span> ShallWe!?</a>
+      <span class="spacer"></span>
+      <button id="nav-toggle" aria-expanded="false" aria-controls="menu">☰ <span class="sr-only">Menu</span></button>
+      <div id="menu" class="nav-links">
+        <a href="index.html">Home</a>
+        <a href="chat.html">Chat</a>
+        <a href="people.html">People</a>
+        <a href="past.html">Past</a>
+        <a href="suggest.html">Suggest</a>
+        <a href="profile.html">Profile</a>
+        <a href="admin.html">Admin</a>
+      </div>
+    </nav>
+  </header>
+  <main class="main">
+    <section class='grid'><article class='card'><h1>404</h1><p>Page not found.</p></article></section>
   </main>
+  <footer>
+    <p>Made with ♥ for walks, coffee & cake. — 2025-08-27</p>
+  </footer>
+  <script type="module" src="firebase.js"></script>
+  <script type="module" src="app.js"></script>
+  
 </body>
 </html>

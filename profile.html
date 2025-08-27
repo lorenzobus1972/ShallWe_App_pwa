@@ -8,7 +8,7 @@
   <link rel="icon" href="assets/icons/icon-192.png" sizes="192x192">
   <link rel="apple-touch-icon" href="assets/icons/icon-192.png">
   <link rel="stylesheet" href="styles.css" />
-  <title>ShallWe!? — People</title>
+  <title>ShallWe!? — Profile</title>
 </head>
 <body>
   <header class="header" role="banner">
@@ -30,10 +30,22 @@
   <main class="main">
     
 <section class="grid">
-  <article class="card">
-    <h1>People</h1>
-    <p class="subtle">Members who have signed in at least once.</p>
-    <div id="peopleList" class="form-row"></div>
+  <article class="card card--half">
+    <h1>Your Profile</h1>
+    <form id="profileForm">
+      <div class="form-row">
+        <label for="displayName">Display name</label>
+        <input id="displayName" class="input" type="text" autocomplete="name" required />
+      </div>
+      <div class="form-row">
+        <label for="photoURL">Photo URL (optional)</label>
+        <input id="photoURL" class="input" type="url" placeholder="https://…" />
+      </div>
+      <div class="form-actions">
+        <button class="cta" type="submit">Save</button>
+      </div>
+    </form>
+    <p id="profileMsg" class="subtle" role="status"></p>
   </article>
 </section>
 
@@ -43,6 +55,6 @@
   </footer>
   <script type="module" src="firebase.js"></script>
   <script type="module" src="app.js"></script>
-  <script type="module" src="people.js"></script>
+  <script type="module" src="profile.js"></script>
 </body>
 </html>

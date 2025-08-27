@@ -3,229 +3,67 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#2a7e4e" />
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="icon" href="assets/icons/icon-192.png" sizes="192x192">
+  <link rel="apple-touch-icon" href="assets/icons/icon-192.png">
+  <link rel="stylesheet" href="styles.css" />
   <title>ShallWe!? — Admin</title>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css">
-  <script type="module" src="firebase.js?v=7"></script>
 </head>
 <body>
-  <header class="header">
-    <div class="container header-inner">
-      <a class="logo" href="index.html" aria-label="Home"><svg viewBox="0 0 24 24"><path d="M8 19l2-6 2 2v5h2v-6l2-2 3 2v-3l-3-2-4 1-2-3-2 1 1 3-3 8h2z"/></svg></a>
-      <div class="appname center">ShallWe!? — Admin</div>
-      <div class="row">
-         <a id="peopleLink" class="btn tiny gray hidden" href="people.html">People</a>
-         <a class="btn tiny gray" href="index.html">Home</a>
-         <button id="signout" class="btn tiny">Sign out</button>
+  <header class="header" role="banner">
+    <nav class="navbar" aria-label="Primary">
+      <a class="brand" href="index.html"><span class="brand__logo" aria-hidden="true"></span> ShallWe!?</a>
+      <span class="spacer"></span>
+      <button id="nav-toggle" aria-expanded="false" aria-controls="menu">☰ <span class="sr-only">Menu</span></button>
+      <div id="menu" class="nav-links">
+        <a href="index.html">Home</a>
+        <a href="chat.html">Chat</a>
+        <a href="people.html">People</a>
+        <a href="past.html">Past</a>
+        <a href="suggest.html">Suggest</a>
+        <a href="profile.html">Profile</a>
+        <a href="admin.html">Admin</a>
       </div>
-    </div>
+    </nav>
   </header>
-
-  <main class="container">
-    <!-- Login -->
-    <section id="loginCard" class="card">
-      <h2 class="title">Admin sign-in</h2>
-      <div class="grid two">
-        <input id="email" class="input" type="email" placeholder="Email (admin)" required>
-        <input id="password" class="input" type="password" placeholder="Password" required>
+  <main class="main">
+    
+<section class="grid">
+  <article class="card">
+    <h1>Admin</h1>
+    <p class="subtle">Only the admin can create or edit events.</p>
+    <form id="eventForm">
+      <div class="form-row">
+        <label for="title">Title</label>
+        <input id="title" class="input" required />
       </div>
-      <div class="row justify-end mt-10">
-        <button id="signin" class="btn">Sign in</button>
+      <div class="form-row">
+        <label for="date">Date & time</label>
+        <input id="date" class="input" type="datetime-local" required />
       </div>
-      <p class="muted">Enable Email/Password auth in Firebase and create your admin user.</p>
-      <p id="loginMsg" class="muted"></p>
-    </section>
-
-    <!-- Admin panel -->
-    <section id="panel" class="card hidden">
-      <div class="row justify-between">
-        <h2 class="title">Current event</h2>
+      <div class="form-row">
+        <label for="location">Location</label>
+        <input id="location" class="input" required placeholder="Hathersage café" />
       </div>
-
-      <div class="grid two">
-        <label>Title<input id="evTitle" class="input" placeholder="Coffee & Walk — Newark"></label>
-        <label>Place<input id="evPlace" class="input" placeholder="Newark"></label>
-        <label>Date<input id="evDate" class="input" type="date"></label>
-        <label>Time<input id="evTime" class="input" type="time"></label>
-        <label>Location<input id="evLocation" class="input" placeholder="Newark"></label>
-        <label>Description<textarea id="evDesc" class="input" rows="3" placeholder="Short description"></textarea></label>
+      <div class="form-row">
+        <label for="details">Details</label>
+        <textarea id="details" class="input" rows="3" placeholder="Route, distance, café stop…"></textarea>
       </div>
-
-      <div class="row justify-end mt-10">
-        <button id="loadCurrent" class="btn tiny gray">Load current</button>
-        <button id="saveCurrent" class="btn tiny">Save current</button>
-        <button id="archiveNow" class="btn tiny red">Archive now</button>
+      <div class="form-actions">
+        <button class="cta" type="submit">Save event</button>
       </div>
-      <p id="adminMsg" class="muted"></p>
+    </form>
+    <div id="adminMsg" class="subtle" role="status"></div>
+  </article>
+</section>
 
-      <hr class="sep">
-
-      <h3 class="subtitle">Participants</h3>
-      <div class="row gap-12 mb-8">
-        <button id="loadFromPeople" class="btn tiny gray">Load from People</button>
-        <button id="loadCurrentParticipants" class="btn tiny gray">Load current</button>
-        <button id="addRow" class="btn tiny gray">Add name</button>
-        <button id="saveParticipants" class="btn tiny">Save participants</button>
-        <button id="copyToPeople" class="btn tiny gray">Copy current to People</button>
-      </div>
-
-      <table id="ptable">
-        <thead><tr><th>Name</th><th>Status</th><th></th></tr></thead>
-        <tbody></tbody>
-      </table>
-      <p id="msg" class="muted"></p>
-    </section>
-
-    <div class="footer">© 2025 ShallWe!?</div>
   </main>
-
-  <script type="module">
-    import {
-      auth, getCurrentEvent, emailSignIn, emailSignOut,
-      saveCurrentEvent, listPeople, upsertPeople,
-      loadCurrentParticipants, saveCurrentParticipants,
-      archiveCurrentEventNow, ADMIN_UID
-    } from './firebase.js?v=7';
-
-    const peopleLink = document.getElementById('peopleLink');
-    const loginCard = document.getElementById('loginCard');
-    const panel = document.getElementById('panel');
-    const adminMsg = document.getElementById('adminMsg');
-    const loginMsg = document.getElementById('loginMsg');
-    const msg = document.getElementById('msg');
-
-    // Show/hide admin panel based on auth
-    auth.onAuthStateChanged(user => {
-      if (user && user.uid === ADMIN_UID) {
-        loginCard.classList.add('hidden');
-        panel.classList.remove('hidden');
-        peopleLink.classList.remove('hidden');
-      } else {
-        panel.classList.add('hidden');
-        loginCard.classList.remove('hidden');
-        peopleLink.classList.add('hidden');
-      }
-    });
-
-    const f = {
-      title: document.getElementById('evTitle'),
-      place: document.getElementById('evPlace'),
-      date: document.getElementById('evDate'),
-      time: document.getElementById('evTime'),
-      location: document.getElementById('evLocation'),
-      desc: document.getElementById('evDesc')
-    };
-
-    const tbody = document.querySelector('#ptable tbody');
-    function addRow(name='', status='maybe'){
-      const tr = document.createElement('tr');
-      tr.innerHTML = `
-        <td><input class="input" value="${name}"></td>
-        <td>
-          <select class="input">
-            <option value="going" ${status==='going'?'selected':''}>going</option>
-            <option value="not_going" ${status==='not_going'?'selected':''}>not_going</option>
-            <option value="maybe" ${status==='maybe'?'selected':''}>maybe</option>
-          </select>
-        </td>
-        <td><button class="btn tiny red" type="button">Remove</button></td>`;
-      tr.querySelector('button').addEventListener('click', ()=> tr.remove());
-      tbody.appendChild(tr);
-    }
-    function readRows(){
-      const rows = [];
-      tbody.querySelectorAll('tr').forEach(tr=>{
-        const name = tr.querySelector('td:nth-child(1) input').value.trim();
-        const status = tr.querySelector('td:nth-child(2) select').value;
-        if(name) rows.push({ name, status });
-      });
-      return rows;
-    }
-
-    // Sign in/out
-    document.getElementById('signin').addEventListener('click', async ()=>{
-      const email = document.getElementById('email').value.trim();
-      const password = document.getElementById('password').value;
-      loginMsg.textContent = '';
-      try{
-        await emailSignIn(email, password);
-      }catch(e){
-        loginMsg.textContent = e.message;
-      }
-    });
-    document.getElementById('signout').addEventListener('click', async ()=>{
-      await emailSignOut();
-    });
-
-    // Buttons
-    document.getElementById('loadCurrent').addEventListener('click', async ()=>{
-      const ev = await getCurrentEvent();
-      if(!ev){ adminMsg.textContent = 'No current event found.'; return; }
-      f.title.value = ev.title || '';
-      f.place.value = ev.place || ev.location || '';
-      f.date.value  = ev.date || '';
-      f.time.value  = ev.time || '';
-      f.location.value = ev.location || ev.place || '';
-      f.desc.value  = ev.description || '';
-      adminMsg.textContent = 'Loaded current event.';
-    });
-
-    document.getElementById('saveCurrent').addEventListener('click', async ()=>{
-      const data = {
-        title: f.title.value.trim(),
-        place: f.place.value.trim(),
-        date: f.date.value,
-        time: f.time.value,
-        location: f.location.value.trim(),
-        description: f.desc.value.trim()
-      };
-      if(!data.title || !data.date || !data.time){ adminMsg.textContent='Title, date, time are required.'; return; }
-      await saveCurrentEvent(data);
-      adminMsg.textContent = 'Saved current event.';
-    });
-
-    document.getElementById('archiveNow').addEventListener('click', async ()=>{
-      adminMsg.textContent = 'Archiving…';
-      try{
-        const res = await archiveCurrentEventNow();
-        adminMsg.textContent = (res.status === 'archived')
-          ? `Archived to Past events (id: ${res.pastId}).`
-          : res.status;
-        if(res.status === 'archived'){
-          ['title','place','date','time','location','desc'].forEach(k => f[k].value = '');
-        }
-      } catch(err){
-        adminMsg.textContent = 'Archive failed: ' + err.message;
-      }
-    });
-
-    document.getElementById('loadFromPeople').addEventListener('click', async ()=>{
-      tbody.innerHTML='';
-      const people = await listPeople();
-      if(people.length===0){ msg.textContent='No people in master list.'; return; }
-      people.forEach(p => addRow(p.name, 'maybe'));
-      msg.textContent = 'Loaded from People as "maybe".';
-    });
-
-    document.getElementById('loadCurrentParticipants').addEventListener('click', async ()=>{
-      tbody.innerHTML='';
-      const parts = await loadCurrentParticipants();
-      if(parts.length===0){ msg.textContent='No participants on current event.'; return; }
-      parts.forEach(p => addRow(p.name, p.status || 'maybe'));
-      msg.textContent = 'Loaded current participants.';
-    });
-
-    document.getElementById('addRow').addEventListener('click', ()=> addRow());
-    document.getElementById('saveParticipants').addEventListener('click', async ()=>{
-      const list = readRows();
-      await saveCurrentParticipants(list);
-      msg.textContent = 'Participants saved.';
-    });
-    document.getElementById('copyToPeople').addEventListener('click', async ()=>{
-      const list = readRows().map(r=>r.name);
-      await upsertPeople(list);
-      msg.textContent = 'Participants copied to People.';
-    });
-  </script>
+  <footer>
+    <p>Made with ♥ for walks, coffee & cake. — 2025-08-27</p>
+  </footer>
+  <script type="module" src="firebase.js"></script>
+  <script type="module" src="app.js"></script>
+  <script type="module" src="admin.js"></script>
 </body>
 </html>
